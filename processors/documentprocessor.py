@@ -1,7 +1,6 @@
 import os
 from typing import List
 import datetime
-import time
 import uuid
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -19,7 +18,7 @@ class DocumentProcessor:
         self.embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,chunk_overlap=chunk_overlap)
         
-        self.client = QdrantClient(host="localhost", port=6333)
+        self.client = QdrantClient(location=":memory:")
         self.collection_name = collection_name
         self.vector_dimension = 384
         
