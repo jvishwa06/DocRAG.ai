@@ -11,9 +11,11 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
 class DocumentProcessor:
-    """loading, processing and embedding documents"""
-    
-    def __init__(self,embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",collection_name: str = "docrag.ai-collection",chunk_size: int = 1000,chunk_overlap: int = 200,):
+    def __init__(self, 
+                 embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+                 collection_name: str = "docrag.ai-collection",
+                 chunk_size: int = 1000,
+                 chunk_overlap: int = 200):
 
         self.embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,chunk_overlap=chunk_overlap)
@@ -24,7 +26,7 @@ class DocumentProcessor:
         
         self.create_collection_if_not_exists()
         
-        self.vector_store = QdrantVectorStore(client=self.client,collection_name=self.collection_name,embedding=self.embedding_model,)
+        self.vector_store = QdrantVectorStore(client=self.client,collection_name=self.collection_name,embedding=self.embedding_model)
     
     def create_collection_if_not_exists(self):
         try:
@@ -32,9 +34,15 @@ class DocumentProcessor:
             collection_names = [collection.name for collection in collections]
             
             if self.collection_name not in collection_names:
-                self.client.create_collection(collection_name=self.collection_name,vectors_config=VectorParams(size=self.vector_dimension, distance=Distance.COSINE))
-        except Exception as e:
-            self.client.create_collection(collection_name=self.collection_name,vectors_config=VectorParams(size=self.vector_dimension, distance=Distance.COSINE))
+                self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(size=self.vector_dimension, distance=Distance.COSINE)
+                )
+        except Exception:
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=self.vector_dimension, distance=Distance.COSINE)
+            )
     
     def load_document(self, file_path: str) -> List[Document]:
         file_extension = os.path.splitext(file_path)[1].lower()
@@ -50,20 +58,19 @@ class DocumentProcessor:
     
     def process_document(self, file_path: str) -> List[Document]:
         document = self.load_document(file_path)
-        
         splits = self.text_splitter.split_documents(document)
         
         doc_id = str(uuid.uuid4())
-        
         filename = os.path.basename(file_path)
+        timestamp = datetime.datetime.now().isoformat()
         
         for split in splits:
-            if not split.metadata:
-                split.metadata = {}
-            
-            split.metadata["document_id"] = doc_id
-            split.metadata["filename"] = filename
-            split.metadata["upload_date"] = datetime.datetime.now().isoformat()
+            split.metadata = {
+                "document_id": doc_id,
+                "filename": filename,
+                "upload_date": timestamp,
+                **split.metadata
+            }
         
         self.vector_store.add_documents(splits)
         
